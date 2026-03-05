@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>งูยูนิคอร์น 🦄🐍</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Boogaloo&family=Kanit:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #0d0820;
+    --grid: #130f2a;
+    --pink: #ff6eb4;
+    --purple: #c77dff;
+    --cyan: #00f5ff;
+    --yellow: #ffe066;
+    --mint: #7bffc8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Kanit', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    overflow: hidden;
+    color: #fff;
+  }
+
+  /* Magic starfield */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(199,125,255,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 90%, rgba(0,245,255,0.12) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(255,110,180,0.08) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  #ui {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 16px; width: 100%; max-width: 560px;
+    justify-content: space-between;
+  }
+
+  .stat-box {
+    background: rgba(199,125,255,0.1);
+    border: 1px solid rgba(199,125,255,0.3);
+    border-radius: 14px;
+    padding: 5px 12px;
+    text-align: center;
+    backdrop-filter: blur(4px);
+  }
+  .stat-label { font-size: 9px; color: #c77dff; letter-spacing: 1px; text-transform: uppercase; }
+  .stat-value { font-family: 'Boogaloo', cursive; font-size: 20px; line-height: 1.2; }
+
+  #score-val { color: var(--pink); text-shadow: 0 0 10px var(--pink); }
+  #size-val { color: var(--mint); text-shadow: 0 0 10px var(--mint); }
+  #timer-val { color: var(--yellow); text-shadow: 0 0 10px var(--yellow); font-size: 22px; }
+  #timer-val.urgent { color: #ff4444; text-shadow: 0 0 14px #ff4444; animation: blink 0.5s infinite alternate; }
+
+  @keyframes blink { from{opacity:0.6} to{opacity:1} }
+
+  #title {
+    font-family: 'Boogaloo', cursive;
+    font-size: 22px;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, #ff6eb4, #c77dff, #00f5ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    filter: drop-shadow(0 0 8px #c77dff88);
+    text-align: center; line-height: 1.1;
+  }
+
+  #canvas-wrap {
+    position: relative; z-index: 5;
+    border-radius: 18px; overflow: hidden;
+    box-shadow: 0 0 0 2px rgba(199,125,255,0.2),
+                0 0 50px rgba(199,125,255,0.15),
+                0 0 100px rgba(0,245,255,0.08),
+                0 20px 60px rgba(0,0,0,0.6);
+  }
+
+  canvas { display: block; background: var(--grid); }
+
+  #overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(13,8,32,0.92);
+    backdrop-filter: blur(8px);
+    z-index: 20; gap: 12px; border-radius: 18px;
+  }
+  #overlay.hidden { display: none; }
+
+  #overlay h2 {
+    font-family: 'Boogaloo', cursive; font-size: 38px;
+    background: linear-gradient(90deg, #ff6eb4, #c77dff, #00f5ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  #overlay p { color: #ccc; font-size: 14px; text-align: center; line-height: 1.8; max-width: 300px; }
+  #final-score { font-family:'Boogaloo',cursive; font-size:32px; color:var(--yellow); text-shadow:0 0 14px var(--yellow); }
+
+  .tip {
+    font-size: 12px; color: #888;
+    border: 1px solid #333; border-radius: 8px;
+    padding: 6px 14px; text-align:center;
+  }
+
+  #start-btn {
+    margin-top: 6px;
+    background: linear-gradient(135deg, #ff6eb4, #c77dff);
+    color: #fff;
+    font-family: 'Boogaloo', cursive; font-size: 20px;
+    border: none; padding: 11px 34px;
+    border-radius: 50px; cursor: pointer;
+    box-shadow: 0 0 20px #c77dff88;
+    transition: transform 0.1s, box-shadow 0.2s;
+  }
+  #start-btn:hover { transform: scale(1.07); box-shadow: 0 0 35px #ff6eb4aa; }
+  #start-btn:active { transform: scale(0.96); }
+
+  #msg-bar {
+    position: relative; z-index: 10; height: 24px;
+    font-size: 13px; color: var(--yellow); letter-spacing: 0.5px;
+    text-shadow: 0 0 8px var(--yellow);
+  }
+
+  /* Dpad */
+  #dpad { display:none; position:relative; z-index:10; margin-top:8px; }
+  .drow { display:flex; justify-content:center; }
+  .dbtn {
+    width:50px; height:50px;
+    background: rgba(199,125,255,0.1);
+    border: 1px solid rgba(199,125,255,0.25);
+    border-radius: 10px; font-size:20px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    user-select:none; -webkit-tap-highlight-color:transparent;
+    transition: background 0.1s;
+  }
+  .dbtn:active { background: rgba(199,125,255,0.3); }
+  @media (max-width:600px) { #dpad { display:flex; flex-direction:column; } }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <div class="stat-box">
+    <div class="stat-label">คะแนน</div>
+    <div class="stat-value" id="score-val">0</div>
+  </div>
+  <div>
+    <div id="title">🦄 งูยูนิคอร์น<br>🍭 กินลูกอม</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">⏱ เวลา</div>
+    <div class="stat-value" id="timer-val">5:00</div>
+  </div>
+</div>
+
+<div id="msg-bar"></div>
+
+<div id="canvas-wrap">
+  <canvas id="c" width="540" height="460"></canvas>
+  <div id="overlay">
+    <h2>🦄 งูยูนิคอร์น</h2>
+    <p>🍭 กินลูกอมเพื่อโตขึ้น<br>
+       ⚔️ ถ้าตัวใหญ่กว่าศัตรู — กินมันได้!<br>
+       👹 กินงูบอสเพื่อชนะ!<br>
+       ⏱ มีเวลา <strong>5 นาที</strong> ต่อเกม</p>
+    <div class="tip">🎨 ตัวละครวาดโดย... เด็กน้อยผู้มีพรสวรรค์ ✨</div>
+    <button id="start-btn">▶ เริ่มเล่น!</button>
+    <p style="font-size:11px;color:#555">← → ↑ ↓ หรือ WASD</p>
+  </div>
+</div>
+
+<div id="dpad">
+  <div class="drow"><div class="dbtn" data-dir="UP">⬆️</div></div>
+  <div class="drow">
+    <div class="dbtn" data-dir="LEFT">⬅️</div>
+    <div class="dbtn" data-dir="DOWN">⬇️</div>
+    <div class="dbtn" data-dir="RIGHT">➡️</div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const overlay = document.getElementById('overlay');
+const overlayH2 = overlay.querySelector('h2');
+const overlayP = overlay.querySelector('p');
+const startBtn = document.getElementById('start-btn');
+const scoreEl = document.getElementById('score-val');
+const timerEl = document.getElementById('timer-val');
+const msgBar = document.getElementById('msg-bar');
+
+const W = canvas.width, H = canvas.height;
+const TILE = 20;
+const COLS = W/TILE, ROWS = H/TILE;
+const GAME_DURATION = 5 * 60; // 5 minutes in seconds
+
+let snake, dir, nextDir, score, candies, enemies, frame, gameRunning, particles;
+let timeLeft, timerInterval;
+
+const CANDY_DATA = [
+  {color:'#ff6eb4', glow:'#ff6eb4', emoji:'🍭'},
+  {color:'#ffe066', glow:'#ffe066', emoji:'🌟'},
+  {color:'#00f5ff', glow:'#00f5ff', emoji:'💎'},
+  {color:'#7bffc8', glow:'#7bffc8', emoji:'🍀'},
+  {color:'#c77dff', glow:'#c77dff', emoji:'🔮'},
+  {color:'#ff9f43', glow:'#ff9f43', emoji:'🍊'},
+];
+
+// Rainbow body colors for unicorn snake
+const RAINBOW = ['#ff6eb4','#ff9f43','#ffe066','#7bffc8','#00f5ff','#c77dff'];
+
+function rnd(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function randPos(){ return {x:rnd(1,COLS-2),y:rnd(1,ROWS-2)}; }
+
+function initGame(){
+  snake=[{x:10,y:11},{x:9,y:11},{x:8,y:11}];
+  dir={x:1,y:0}; nextDir={x:1,y:0};
+  score=0; frame=0; particles=[];
+  candies=[]; enemies=[];
+  timeLeft = GAME_DURATION;
+  startTimer();
+  for(let i=0;i<5;i++) spawnCandy();
+  spawnEnemy('small');
+  spawnEnemy('small');
+  spawnEnemy('medium');
+  gameRunning=true;
+  updateUI();
+}
+
+function startTimer(){
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    if(!gameRunning){ clearInterval(timerInterval); return; }
+    timeLeft--;
+    updateTimerDisplay();
+    if(timeLeft<=0){ clearInterval(timerInterval); endGame('⏰ หมดเวลา!'); }
+  }, 1000);
+}
+
+function updateTimerDisplay(){
+  let m = Math.floor(timeLeft/60);
+  let s = timeLeft%60;
+  timerEl.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  timerEl.className = 'stat-value' + (timeLeft<=30 ? ' urgent':'');
+}
+
+function spawnCandy(){
+  let pos; do{ pos=randPos(); }while(occupied(pos));
+  let d = CANDY_DATA[rnd(0,CANDY_DATA.length-1)];
+  candies.push({x:pos.x,y:pos.y,...d,pulse:Math.random()*Math.PI*2,value:rnd(1,3)});
+}
+
+function spawnEnemy(type){
+  let pos, attempts=0;
+  do{ pos=randPos(); attempts++; }while(occupied(pos)&&attempts<60);
+  let size,speed,headColor,bodyColor;
+  if(type==='small'){ size=rnd(2,3); speed=rnd(7,9); headColor='#ff4444'; bodyColor='#cc2222'; }
+  else if(type==='medium'){ size=rnd(4,7); speed=rnd(9,12); headColor='#ff7700'; bodyColor='#cc5500'; }
+  else{ size=rnd(12,16); speed=rnd(11,14); headColor='#ff0066'; bodyColor='#cc0044'; }
+
+  let body=[{x:pos.x,y:pos.y}];
+  for(let i=1;i<size;i++) body.push({x:pos.x-i,y:pos.y});
+  let sd=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}][rnd(0,3)];
+  enemies.push({body,dir:sd,nextDir:sd,speed,frameCount:0,type,headColor,bodyColor});
+}
+
+function occupied(pos){
+  if(snake.some(s=>s.x===pos.x&&s.y===pos.y)) return true;
+  if(candies.some(c=>c.x===pos.x&&c.y===pos.y)) return true;
+  if(enemies.some(e=>e.body.some(b=>b.x===pos.x&&b.y===pos.y))) return true;
+  return false;
+}
+
+function updateUI(){
+  scoreEl.textContent=score;
+}
+
+function spawnParticles(x,y,color,count=8){
+  for(let i=0;i<count;i++){
+    let a=(Math.PI*2/count)*i+Math.random()*0.5;
+    particles.push({
+      x:x*TILE+TILE/2,y:y*TILE+TILE/2,
+      vx:Math.cos(a)*(2+Math.random()*3),
+      vy:Math.sin(a)*(2+Math.random()*3),
+      life:1,color,size:3+Math.random()*5
+    });
+  }
+}
+
+// Sparkle trail particles for unicorn
+function spawnSparkle(x,y){
+  if(Math.random()<0.4){
+    particles.push({
+      x:x*TILE+TILE/2+(Math.random()-0.5)*TILE,
+      y:y*TILE+TILE/2+(Math.random()-0.5)*TILE,
+      vx:(Math.random()-0.5)*1.5,
+      vy:-1-Math.random()*2,
+      life:0.8,
+      color:RAINBOW[rnd(0,RAINBOW.length-1)],
+      size:2+Math.random()*2,
+      sparkle:true
+    });
+  }
+}
+
+function showMsg(txt,color='#ffe066'){
+  msgBar.textContent=txt;
+  msgBar.style.color=color;
+  msgBar.style.textShadow=`0 0 8px ${color}`;
+  clearTimeout(showMsg._t);
+  showMsg._t=setTimeout(()=>{ msgBar.textContent=''; },2000);
+}
+
+let lastTime=0, speed=135;
+function gameLoop(ts){
+  if(!gameRunning) return;
+  requestAnimationFrame(gameLoop);
+  let dt=ts-lastTime;
+  if(dt<speed) return;
+  lastTime=ts;
+  frame++;
+  update();
+  draw();
+}
+
+function update(){
+  dir=nextDir;
+  let head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+
+  if(head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS){ endGame('💥 ชนกำแพง!'); return; }
+  if(snake.slice(1).some(s=>s.x===head.x&&s.y===head.y)){ endGame('🐍 กัดตัวเอง!'); return; }
+
+  // Check collision with ANY part of enemy body
+  for(let e of enemies){
+    let hit = e.body.some(b=>b.x===head.x&&b.y===head.y);
+    if(hit){
+      if(e.body.length >= snake.length){ endGame('💀 ถูกงูร้ายกิน!'); return; }
+      // We are bigger — eat it immediately below
+    }
+  }
+
+  snake.unshift(head);
+  spawnSparkle(snake[snake.length-1].x, snake[snake.length-1].y);
+
+  // Eat candy
+  let ci=candies.findIndex(c=>c.x===head.x&&c.y===head.y);
+  if(ci>=0){
+    let c=candies[ci];
+    score+=c.value*10;
+    spawnParticles(head.x,head.y,c.color,12);
+    showMsg(`+${c.value*10} ✨`,c.color);
+    candies.splice(ci,1);
+    spawnCandy();
+    speed=Math.max(65,speed-0.8);
+  } else {
+    snake.pop();
+  }
+
+  // Eat enemies — head touches ANY segment of a smaller enemy
+  for(let ei=enemies.length-1;ei>=0;ei--){
+    let e=enemies[ei];
+    let hit = e.body.some(b=>b.x===head.x&&b.y===head.y);
+    if(hit && snake.length > e.body.length){
+      score+=e.body.length*25;
+      spawnParticles(head.x,head.y,e.headColor,25);
+      let bonus=Math.floor(e.body.length/2);
+      for(let i=0;i<bonus;i++) snake.push({...snake[snake.length-1]});
+      let msg=e.type==='boss'?'🏆 กินงูบอสได้! สุดยอด!':
+              e.type==='medium'?'💪 กินงูกลางได้!':'😤 กินงูร้ายได้!';
+      showMsg(msg,e.headColor);
+      enemies.splice(ei,1);
+      if(e.type==='boss'){
+        score+=300;
+        clearInterval(timerInterval);
+        setTimeout(()=>endGame('🏆 ชนะ! กินงูบอสแล้ว!', true),200);
+        return;
+      }
+      if(enemies.length===0) setTimeout(()=>{
+        spawnEnemy('small'); spawnEnemy('medium');
+        showMsg('🌊 คลื่นใหม่มาแล้ว!','#00f5ff');
+      },800);
+    }
+  }
+
+  // Move enemies
+  for(let e of enemies){
+    e.frameCount++;
+    if(e.frameCount<e.speed) continue;
+    e.frameCount=0;
+    moveEnemy(e);
+  }
+
+  // Spawn boss at length 12+
+  if(!enemies.some(e=>e.type==='boss')&&snake.length>=12&&frame%220===0){
+    spawnEnemy('boss');
+    showMsg('👹 งูบอสปรากฏ! โตกว่าถึงกินได้!','#ff0066');
+  }
+  if(enemies.filter(e=>e.type==='small').length<2&&frame%100===0) spawnEnemy('small');
+
+  updateUI();
+}
+
+function moveEnemy(e){
+  let head=e.body[0];
+  let sh=snake[0];
+  let dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+  let opp={x:-e.dir.x,y:-e.dir.y};
+  let valid=dirs.filter(d=>!(d.x===opp.x&&d.y===opp.y));
+  let chase=e.body.length>=snake.length;
+  let chosen;
+  if(Math.random()<0.65){
+    valid.sort((a,b)=>{
+      let da=Math.abs((head.x+a.x)-sh.x)+Math.abs((head.y+a.y)-sh.y);
+      let db=Math.abs((head.x+b.x)-sh.x)+Math.abs((head.y+b.y)-sh.y);
+      return chase?da-db:db-da;
+    });
+    chosen=valid[0];
+  } else { chosen=valid[rnd(0,valid.length-1)]; }
+  let nh={x:head.x+chosen.x,y:head.y+chosen.y};
+  if(nh.x<0)nh.x=COLS-1; if(nh.x>=COLS)nh.x=0;
+  if(nh.y<0)nh.y=ROWS-1; if(nh.y>=ROWS)nh.y=0;
+  e.dir=chosen;
+  e.body.unshift(nh); e.body.pop();
+}
+
+// ── DRAWING ──────────────────────────────────────────────
+function drawUnicornHead(cx,cy,dx,dy,scale=1){
+  ctx.save();
+  ctx.translate(cx,cy);
+  // Rotate based on direction
+  let angle = Math.atan2(dy,dx);
+  ctx.rotate(angle);
+  let s=scale;
+
+  // Body/head circle - pink
+  ctx.shadowColor='#ff6eb4';
+  ctx.shadowBlur=18;
+  ctx.fillStyle='#ffb3d9';
+  ctx.beginPath();
+  ctx.ellipse(0,0,TILE*0.55*s,TILE*0.55*s,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur=0;
+
+  // Horn (triangle pointing right = forward)
+  ctx.fillStyle='#ffe066';
+  ctx.strokeStyle='#ffcc00';
+  ctx.lineWidth=0.8;
+  ctx.shadowColor='#ffe066';
+  ctx.shadowBlur=10;
+  ctx.beginPath();
+  ctx.moveTo(TILE*0.55*s,0);
+  ctx.lineTo(TILE*0.55*s+TILE*0.35*s,-TILE*0.12*s);
+  ctx.lineTo(TILE*0.55*s+TILE*0.35*s,TILE*0.12*s);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.shadowBlur=0;
+
+  // Ears (two bumps on top)
+  ctx.fillStyle='#ff9ecf';
+  ctx.strokeStyle='#ff6eb4';
+  ctx.lineWidth=0.8;
+  [[TILE*0.2*s,-TILE*0.5*s],[TILE*0.2*s,TILE*0.5*s]].forEach(([ex,ey])=>{
+    ctx.beginPath();
+    ctx.ellipse(ex,ey,TILE*0.15*s,TILE*0.22*s,0,0,Math.PI*2);
+    ctx.fill(); ctx.stroke();
+  });
+
+  // Whiskers
+  ctx.strokeStyle='rgba(255,110,180,0.7)';
+  ctx.lineWidth=0.8;
+  [[-TILE*0.1*s,-TILE*0.35*s,TILE*0.15*s,-TILE*0.5*s],
+   [-TILE*0.1*s,TILE*0.35*s,TILE*0.15*s,TILE*0.5*s]].forEach(([x1,y1,x2,y2])=>{
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  });
+
+  // Big cute eye
+  ctx.fillStyle='#fff';
+  ctx.beginPath();
+  ctx.ellipse(TILE*0.1*s,-TILE*0.1*s,TILE*0.18*s,TILE*0.22*s,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle='#222';
+  ctx.beginPath();
+  ctx.ellipse(TILE*0.13*s,-TILE*0.1*s,TILE*0.1*s,TILE*0.13*s,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle='#fff';
+  ctx.beginPath();
+  ctx.arc(TILE*0.16*s,-TILE*0.16*s,TILE*0.04*s,0,Math.PI*2);
+  ctx.fill();
+
+  // Rosy cheek
+  ctx.fillStyle='rgba(255,80,120,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(-TILE*0.05*s,-TILE*0.22*s,TILE*0.12*s,TILE*0.08*s,0,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawUnicornBody(seg,i,total){
+  let t=i/total;
+  let ci=Math.floor(t*RAINBOW.length)%RAINBOW.length;
+  let color=RAINBOW[ci];
+  ctx.save();
+  ctx.shadowColor=color;
+  ctx.shadowBlur=8;
+  ctx.fillStyle=color+'cc';
+  ctx.beginPath();
+  ctx.roundRect(seg.x*TILE+2,seg.y*TILE+2,TILE-4,TILE-4,6);
+  ctx.fill();
+  // Shine
+  ctx.fillStyle='rgba(255,255,255,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(seg.x*TILE+6,seg.y*TILE+5,3,2,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawEnemySnake(e){
+  let isBoss=e.type==='boss';
+  e.body.forEach((seg,i)=>{
+    let t=i/e.body.length;
+    ctx.save();
+    ctx.shadowColor=e.headColor;
+    ctx.shadowBlur=isBoss?18:8;
+    ctx.fillStyle=i===0?e.headColor:hexA(e.bodyColor,0.75-t*0.3);
+    ctx.beginPath();
+    ctx.roundRect(seg.x*TILE+1,seg.y*TILE+1,TILE-2,TILE-2,isBoss?10:7);
+    ctx.fill();
+    if(i===0){
+      ctx.shadowBlur=0;
+      // Eyes
+      let ed=e.dir;
+      let ex1=seg.x*TILE+(ed.y!==0?5:ed.x>0?13:3);
+      let ey1=seg.y*TILE+(ed.x!==0?5:ed.y>0?13:3);
+      let ex2=seg.x*TILE+(ed.y!==0?14:ed.x>0?13:3);
+      let ey2=seg.y*TILE+(ed.x!==0?14:ed.y>0?13:3);
+      ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.arc(ex1,ey1,2.5,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ex2,ey2,2.5,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#000';
+      ctx.beginPath(); ctx.arc(ex1+0.5,ey1+0.5,1.3,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ex2+0.5,ey2+0.5,1.3,0,Math.PI*2); ctx.fill();
+      if(isBoss){
+        ctx.fillStyle='rgba(0,0,0,0.75)';
+        ctx.fillRect(seg.x*TILE,seg.y*TILE-13,24,11);
+        ctx.fillStyle='#ffe066';
+        ctx.font='bold 8px Kanit';
+        ctx.textAlign='center';
+        ctx.fillText('BOSS',seg.x*TILE+12,seg.y*TILE-4);
+      }
+    }
+    ctx.restore();
+  });
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle='rgba(199,125,255,0.04)'; ctx.lineWidth=0.5;
+  for(let x=0;x<COLS;x++){ ctx.beginPath();ctx.moveTo(x*TILE,0);ctx.lineTo(x*TILE,H);ctx.stroke(); }
+  for(let y=0;y<ROWS;y++){ ctx.beginPath();ctx.moveTo(0,y*TILE);ctx.lineTo(W,y*TILE);ctx.stroke(); }
+
+  // Candies
+  candies.forEach(c=>{
+    c.pulse+=0.08;
+    let s=1+Math.sin(c.pulse)*0.18;
+    ctx.save();
+    ctx.translate(c.x*TILE+TILE/2,c.y*TILE+TILE/2);
+    ctx.scale(s,s);
+    ctx.shadowColor=c.glow; ctx.shadowBlur=16;
+    ctx.font='14px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(c.emoji,0,0);
+    ctx.restore();
+  });
+
+  // Enemies
+  enemies.forEach(e=>drawEnemySnake(e));
+
+  // Player snake body
+  for(let i=snake.length-1;i>=1;i--) drawUnicornBody(snake[i],i,snake.length);
+
+  // Player head (unicorn!)
+  let h=snake[0];
+  drawUnicornHead(h.x*TILE+TILE/2, h.y*TILE+TILE/2, dir.x, dir.y, 1.1);
+
+  // Particles
+  for(let i=particles.length-1;i>=0;i--){
+    let p=particles[i];
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.12; p.life-=p.sparkle?0.05:0.035;
+    if(p.life<=0){ particles.splice(i,1); continue; }
+    ctx.save();
+    ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.color;
+    ctx.shadowColor=p.color; ctx.shadowBlur=10;
+    if(p.sparkle){
+      // Star shape
+      ctx.font=`${p.size*4}px serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('✦',p.x,p.y);
+    } else {
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // HUD bar: size comparison
+  if(gameRunning){
+    let biggest=enemies.reduce((mx,e)=>(!mx||e.body.length>mx.body.length)?e:mx,null);
+    if(biggest){
+      let canEat=snake.length>biggest.body.length;
+      ctx.save();
+      ctx.fillStyle='rgba(13,8,32,0.7)';
+      ctx.beginPath(); ctx.roundRect(6,6,175,22,8); ctx.fill();
+      ctx.font='bold 11px Kanit';
+      ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.fillStyle=canEat?'#7bffc8':'#ff6eb4';
+      ctx.fillText(`🦄 ${snake.length} vs 🐍 ${biggest.body.length}  ${canEat?'✅ กินได้!':'❌ ยังเล็กไป'}`,10,17);
+      ctx.restore();
+    }
+  }
+}
+
+function hexA(hex,a){
+  let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function lerp(a,b,t){ return a+(b-a)*t; }
+
+function endGame(msg, win=false){
+  gameRunning=false;
+  clearInterval(timerInterval);
+  overlayH2.textContent = win?'🏆 ยอดเยี่ยม!':'💀 จบเกม!';
+  let finalScoreHtml = `<span id="final-score">${score}</span>`;
+  overlayP.innerHTML = `${msg}<br><br>🏆 คะแนนสุดท้าย: ${finalScoreHtml}<br>ขนาดงูยูนิคอร์น: <strong style="color:#7bffc8">${snake.length}</strong>`;
+  startBtn.textContent = '🔄 เล่นอีกครั้ง!';
+  overlay.classList.remove('hidden');
+}
+
+// Controls
+document.addEventListener('keydown',e=>{
+  const map={
+    ArrowUp:{x:0,y:-1},ArrowDown:{x:0,y:1},ArrowLeft:{x:-1,y:0},ArrowRight:{x:1,y:0},
+    w:{x:0,y:-1},s:{x:0,y:1},a:{x:-1,y:0},d:{x:1,y:0},
+    W:{x:0,y:-1},S:{x:0,y:1},A:{x:-1,y:0},D:{x:1,y:0}
+  };
+  if(map[e.key]){
+    let nd=map[e.key];
+    if(nd.x!==-dir.x||nd.y!==-dir.y) nextDir=nd;
+    e.preventDefault();
+  }
+});
+
+document.querySelectorAll('.dbtn').forEach(btn=>{
+  ['touchstart','click'].forEach(evt=>{
+    btn.addEventListener(evt,e=>{
+      if(evt==='touchstart') e.preventDefault();
+      const m={UP:{x:0,y:-1},DOWN:{x:0,y:1},LEFT:{x:-1,y:0},RIGHT:{x:1,y:0}};
+      let nd=m[btn.dataset.dir];
+      if(nd&&(nd.x!==-dir.x||nd.y!==-dir.y)) nextDir=nd;
+    });
+  });
+});
+
+startBtn.addEventListener('click',()=>{
+  overlay.classList.add('hidden');
+  speed=135;
+  initGame();
+  requestAnimationFrame(gameLoop);
+});
+
+// Initial draw
+ctx.fillStyle='#130f2a'; ctx.fillRect(0,0,W,H);
+</script>
+</body>
+</html>
